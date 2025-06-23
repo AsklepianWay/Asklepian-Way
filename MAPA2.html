@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diario de MAPA - Registro de Actividades</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+  <!-- Bienvenida e información -->
+  <section id="bienvenida" class="min-h-screen flex flex-col justify-center items-center bg-white px-6 text-center">
+    <h1 class="text-3xl font-bold text-blue-800 mb-4">Bienvenido a tu Diario de Actividades MAPA</h1>
+    <p class="max-w-2xl text-lg mb-6 text-gray-700">
+      El Monitoreo Ambulatorio de Presión Arterial (MAPA) es una herramienta diagnóstica que registra tu presión arterial durante 24 horas en diferentes momentos del día y la noche.
+    </p>
+    <ul class="text-left text-sm bg-blue-50 p-6 rounded shadow max-w-xl space-y-2">
+      <li>🕒 Lleva el tensiómetro durante todo el día, incluso mientras duermes.</li>
+      <li>📔 Registra tus actividades físicas, comidas, sueño y medicamentos.</li>
+      <li>🛏️ Evita movimientos bruscos durante las mediciones automáticas.</li>
+      <li>💊 Toma tu medicación habitual y anótalo.</li>
+    </ul>
+    <button onclick="mostrarDiario()" class="mt-6 bg-blue-700 text-white px-6 py-2 rounded hover:bg-blue-800">
+      Iniciar Diario
+    </button>
+  </section>
+
+  <!-- Diario MAPA -->
+  <section id="diario" class="hidden min-h-screen px-6 py-8 md:px-20 bg-gray-100">
+    <h2 class="text-2xl font-bold text-blue-800 mb-4 text-center">Registrar Actividad MAPA</h2>
+    <div class="bg-white p-6 rounded shadow max-w-3xl mx-auto mb-6">
+      <form onsubmit="guardarEntrada(event)" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input type="datetime-local" id="momento" required class="p-2 border rounded w-full" />
+          <input type="text" id="actividad" placeholder="¿Qué estabas haciendo?" required class="p-2 border rounded w-full" />
+          <input type="text" id="medicacion" placeholder="¿Tomaste algún medicamento?" class="p-2 border rounded w-full" />
+          <select id="estado" class="p-2 border rounded w-full">
+            <option value="activo">Activo</option>
+            <option value="reposo">En reposo</option>
+            <option value="durmiendo">Durmiendo</option>
+          </select>
+        </div>
+        <button type="submit" class="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800">Guardar Entrada</button>
+      </form>
+    </div>
+
+    <h3 class="text-xl font-semibold mb-2 text-center text-gray-700">Tus registros</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full table-auto bg-white rounded shadow text-sm">
+        <thead class="bg-blue-100 text-blue-900">
+          <tr>
+            <th class="px-4 py-2">Fecha y hora</th>
+            <th class="px-4 py-2">Actividad</th>
+            <th class="px-4 py-2">Medicamento</th>
+            <th class="px-4 py-2">Estado</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-registros"></tbody>
+      </table>
+    </div>
+
+    <div class="mt-6 text-center">
+      <button onclick="descargarPDF()" class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 mr-4">
+        📄 Descargar informe en PDF
+      </button>
+      <button onclick="borrarEntradas()" class="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700">
+        🗑️ Borrar registros
+      </button>
+    </div>
+  </section>
+
+  <script>
+    function mostrarDiario() {
+      document.getElementById("bienvenida").classList.add("hidden");
+      document.getElementById("diario").classList.remove("hidden");
+      cargarEntradas();
+    }
+
+    function guardarEntrada(event) {
+      event.preventDefault();
+      const momento = document.getElementById("momento").value;
+      const actividad = document.getElementById("actividad").value;
+      const medicacion = document.getElementById("medicacion").value;
+      const estado = document.getElementById("estado").value;
+
+      const entrada = { momento, actividad, medicacion, estado };
+      const datos = JSON.parse(localStorage.getItem("mapaDiario")) || [];
+      datos.push(entrada);
+      localStorage.setItem("mapaDiario", JSON.stringify(datos));
+
+      document.getElementById("momento").value = "";
+      document.getElementById("actividad").value = "";
+      document.getElementById("medicacion").value = "";
+      document.getElementById("estado").value = "activo";
+      cargarEntradas();
+    }
+
+    function cargarEntradas() {
+      const registros = JSON.parse(localStorage.getItem("mapaDiario")) || [];
+      const tabla = document.getElementById("tabla-registros");
+      tabla.innerHTML = "";
+
+      registros.forEach(r => {
+        const fila = `<tr class='text-center border-b'>
+          <td class='py-1'>${r.momento}</td>
+          <td>${r.actividad}</td>
+          <td>${r.medicacion || '-'}</td>
+          <td>${r.estado}</td>
+        </tr>`;
+        tabla.innerHTML += fila;
+      });
+    }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    function borrarEntradas() {
+      localStorage.removeItem("mapaDiario");
+      cargarEntradas();
+    }
+
+    function descargarPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const registros = JSON.parse(localStorage.getItem("mapaDiario")) || [];
+
+      let y = 15;
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("Informe de Actividades - Registro MAPA", 105, y, { align: "center" });
+
+      y += 10;
+      doc.setLineWidth(0.5);
+      doc.line(10, y, 200, y);
+      y += 6;
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+
+      registros.forEach((r, i) => {
+        if (y > 270) {
+          doc.addPage();
+          y = 15;
+        }
+        doc.setTextColor(33, 33, 33);
+        doc.text(`${i + 1}) Fecha y hora:`, 10, y);
+        doc.setFont("helvetica", "bold");
+        doc.text(r.momento, 50, y);
+        doc.setFont("helvetica", "normal");
+        y += 6;
+
+        doc.text("Actividad:", 10, y);
+        doc.text(r.actividad, 50, y);
+        y += 6;
+
+        doc.text("Medicamento:", 10, y);
+        doc.text(r.medicacion || '-', 50, y);
+        y += 6;
+
+        doc.text("Estado:", 10, y);
+        doc.text(r.estado, 50, y);
+        y += 10;
+      });
+
+      if (y > 260) {
+        doc.addPage();
+        y = 15;
+      }
+
+      doc.setFontSize(11);
+      doc.setTextColor(80);
+      doc.text("Lleva este informe a tu profesional de salud para correlacionar los eventos con el registro de presión arterial MAPA.", 10, y);
+      y += 5;
+      doc.text("Este registro es una herramienta complementaria y no reemplaza la valoración médica profesional.", 10, y);
+
+      doc.save("Diario_MAPA.pdf");
+    }
+  </script>
+</body>
+</html>
